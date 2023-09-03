@@ -1,0 +1,147 @@
+<!DOCTYPE HTML>
+<head>
+	<style>
+		.main {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			flex-direction: column;
+			margin-top: 100px;
+		}
+
+		.container {
+			display: flex;
+			justify-content: center;
+			flex-wrap: wrap;
+			width: 100%;
+		}
+
+		.grid {
+			width: 250px;
+			height: 250px;
+			float: left;
+			margin: 1%;
+		}
+
+		.cell {
+			float: left;
+			width: 50px;
+			height: 50px;
+			background-color: #ccc;
+			margin: 5px;
+			text-align: center;
+			border-radius: 5px;
+		}
+
+		.cell2 {
+			float: left;
+			width: 50px;
+			height: 50px;
+			background-color: yellow;
+			margin: 5px;
+			text-align: center;
+			border-radius: 5px;
+		}
+	</style>
+</head>
+<script>
+	//工具函数
+	async function encode(message) {
+		const msgUint8 = new TextEncoder().encode(message); // encode as (utf-8) Uint8Array
+		const hashBuffer = await crypto.subtle.digest("SHA-256", msgUint8); // hash the message
+		const hashArray = Array.from(new Uint8Array(hashBuffer)); // convert buffer to byte array
+		const hashHex = hashArray
+			.map((b) => b.toString(16).padStart(2, "0"))
+			.join(""); // convert bytes to hex string
+		return hashHex;
+	}
+
+	function convertToArr(encodeText) {
+		let result = [];
+		//密文长度为64
+		let step = 4;
+		let arr = encodeText.split('')
+		for (let i = 0; i < 16; i++) {
+			let start = i * step;
+			let end = (i + 1) * step;
+			let subArr = arr.slice(start, end)
+			let value = subArr.map((e) => '0x' + e).reduce((a, b) => +a + +b);
+			result[i] = value % 10;
+		}
+		return result;
+	}
+
+
+	function convertToLetter(arr) {
+		return arr
+			.map((e) => +e + 97)
+			.map(e => String.fromCharCode(e));
+	}
+
+	function convertToSymbol(arr) {
+		let symbolArr = ['#', '$', '%'];
+		return arr
+			.map(e => +e % 3)
+			.map(e => symbolArr[e % 3]);
+	}
+
+	function createGrid(gridName, arr, arr2) {
+		let grid = document.getElementById(gridName);
+		//删除所有子节点
+		grid.innerHTML = ''
+		//创建子节点
+		for (var i = 0; i < arr.length; i++) {
+			var cell = document.createElement("div");
+			let className = !arr2.find(e => e === i) ? "cell" : "cell2";
+			cell.className = className;
+			cell.innerHTML = arr[i];
+			grid.appendChild(cell);
+		}
+	}
+</script>
+
+<body>
+	<div class="main">
+
+		<div class="form">
+			<div>
+				<label for="domain">站点</label>
+				<input id="domain" type="text">
+			</div>
+			<div>
+				<label for="domain">密码</label>
+				<input id="key" type="password">
+			</div>
+		</div>
+		<div class="container">
+
+			<div id="letter" class="grid"></div>
+			<div id="number" class="grid"></div>
+			<div id="symbol" class="grid"></div>
+		</div>
+	</div>
+	<script>
+		let domainHtml = document.getElementById("domain")
+		let keyHtml = document.getElementById("key")
+
+		//不能用onkeydown，否则触发器会在输入框内容改变之前执行
+		domainHtml.onkeyup = generate;
+		keyHtml.onkeyup = generate;
+
+
+		function generate() {
+			let domain = domainHtml.value;
+			let key = keyHtml.value;
+			if (!(domain && key)) {
+				return
+			}
+			let text = domain + key;
+			encode(text).then((encodeText) => {
+				let arr = convertToArr(encodeText);
+				createGrid('letter', convertToLetter(arr), [4, 5, 14, 15]);
+				createGrid('number', arr, [4, 5, 6, 7, 8, 9, 10, 11]);
+				createGrid('symbol', convertToSymbol(arr), [11]);
+			});
+		}
+	</script>
+</body>
